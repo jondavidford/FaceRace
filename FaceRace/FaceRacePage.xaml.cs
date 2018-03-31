@@ -1,4 +1,7 @@
-﻿using SkiaSharp;
+﻿using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 
@@ -6,19 +9,69 @@ namespace FaceRace
 {
     public partial class FaceRacePage : ContentPage
     {
+        private readonly Stopwatch stopwatch = new Stopwatch();
+        private bool pageIsActive;
+        private float scale;
+
         public FaceRacePage()
         {
             InitializeComponent();
         }
 
-        private void canvasView_PaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
+        protected override void OnAppearing()
         {
-            SKSurface surface = eventArgs.Surface;
+            base.OnAppearing();
+            pageIsActive = true;
+            AnimationLoop();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            pageIsActive = false;
+        }
+
+        private async Task AnimationLoop()
+        {
+            stopwatch.Start();
+
+            while (pageIsActive)
+            {
+                double cycleTime = 1;
+                double t = stopwatch.Elapsed.TotalSeconds % cycleTime / cycleTime;
+                scale = (1 + (float)Math.Sin(2 * Math.PI * t)) / 2;
+                canvasView.InvalidateSurface();
+                await Task.Delay(TimeSpan.FromSeconds(1.0 / 30));
+            }
+
+            stopwatch.Stop();
+        }
+
+        private void OnCanvasViewPaintSurface(object sender, SKPaintSurfaceEventArgs args)
+        {
+            SKImageInfo info = args.Info;
+            SKSurface surface = args.Surface;
             SKCanvas canvas = surface.Canvas;
 
-            canvas.Clear(SKColors.CornflowerBlue);
+            canvas.Clear();
 
-            canvas.DrawCircle(0, 0, 200, new SKPaint { Style = SKPaintStyle.Fill, Color = SKColors.Black });
+            float maxRadius = 0.75f * Math.Min(info.Width, info.Height) / 2;
+            float minRadius = 0.25f * maxRadius;
+
+            float xRadius = minRadius * scale + maxRadius * (1 - scale);
+            float yRadius = maxRadius * scale + minRadius * (1 - scale);
+
+            using (SKPaint paint = new SKPaint())
+            {
+                paint.Style = SKPaintStyle.Stroke;
+                paint.Color = SKColors.Blue;
+                paint.StrokeWidth = 50;
+                canvas.DrawOval(info.Width / 2, info.Height / 2, xRadius, yRadius, paint);
+
+                paint.Style = SKPaintStyle.Fill;
+                paint.Color = SKColors.SkyBlue;
+                canvas.DrawOval(info.Width / 2, info.Height / 2, xRadius, yRadius, paint);
+            }
         }
     }
 }
