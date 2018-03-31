@@ -10,8 +10,11 @@ namespace FaceRace
     public partial class FaceRacePage : ContentPage
     {
         private readonly Stopwatch stopwatch = new Stopwatch();
+        private SKPoint circlePosition = new SKPoint(0, 0);
+        private SKPoint circleVelocity = new SKPoint(30, 30);
+        private int width = -1;
+        private int height = -1;
         private bool pageIsActive;
-        private float scale;
 
         public FaceRacePage()
         {
@@ -37,9 +40,24 @@ namespace FaceRace
 
             while (pageIsActive)
             {
-                double cycleTime = 1;
-                double t = stopwatch.Elapsed.TotalSeconds % cycleTime / cycleTime;
-                scale = (1 + (float)Math.Sin(2 * Math.PI * t)) / 2;
+                if (width > 0)
+                {
+                    circlePosition.X += circleVelocity.X;
+                    if (circlePosition.X > width || circlePosition.X < 0)
+                    {
+                        circleVelocity.X = -circleVelocity.X;
+                    }
+                }
+
+                if (height > 0)
+                {
+                    circlePosition.Y += circleVelocity.Y;
+                    if (circlePosition.Y > height || circlePosition.Y < 0)
+                    {
+                        circleVelocity.Y = -circleVelocity.Y;
+                    }
+                }
+
                 canvasView.InvalidateSurface();
                 await Task.Delay(TimeSpan.FromSeconds(1.0 / 30));
             }
@@ -53,24 +71,21 @@ namespace FaceRace
             SKSurface surface = args.Surface;
             SKCanvas canvas = surface.Canvas;
 
+            width = info.Width;
+            height = info.Height;
+
             canvas.Clear();
-
-            float maxRadius = 0.75f * Math.Min(info.Width, info.Height) / 2;
-            float minRadius = 0.25f * maxRadius;
-
-            float xRadius = minRadius * scale + maxRadius * (1 - scale);
-            float yRadius = maxRadius * scale + minRadius * (1 - scale);
 
             using (SKPaint paint = new SKPaint())
             {
-                paint.Style = SKPaintStyle.Stroke;
-                paint.Color = SKColors.Blue;
-                paint.StrokeWidth = 50;
-                canvas.DrawOval(info.Width / 2, info.Height / 2, xRadius, yRadius, paint);
-
                 paint.Style = SKPaintStyle.Fill;
                 paint.Color = SKColors.SkyBlue;
-                canvas.DrawOval(info.Width / 2, info.Height / 2, xRadius, yRadius, paint);
+                paint.StrokeWidth = 50;
+                canvas.DrawCircle(circlePosition, 50, paint);
+
+                paint.Style = SKPaintStyle.Fill;
+                paint.Color = SKColors.Black;
+                canvas.DrawLine(0, height / 2, width, height / 2, paint);
             }
         }
     }
